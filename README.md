@@ -1,67 +1,50 @@
-# Asset Manager (wp-content)
+# WP Content Asset Manager
 
-Repositori ini berisi sistem pengelola aset (Asset Manager) berbasis PHP dengan UI/UX yang modern, menggunakan Vanilla CSS, fitur drag-and-drop, serta integrasi ikon Lucide.
+WP Content Asset Manager adalah alat berbasis PHP sederhana dan elegan untuk mengelola aset media (gambar, video, dokumen, dll.) pada website Anda. Alat ini sangat berguna sebagai pengganti file manager bawaan server atau FTP, memberikan antarmuka yang cepat dan modern (mirip *Media Library* di WordPress).
 
-## Instruksi Penggunaan Git & GitHub
+## Fitur Utama
 
-Berikut adalah langkah-langkah untuk menginisialisasi repositori lokal dan melakukan *push* (mengunggah) kode ini ke GitHub Anda di tautan `https://github.com/Barodillah/wp-content.git`.
+- **UI/UX Modern & Responsif:** Dibangun dengan Vanilla CSS, font *Inter*, dan desain *glassmorphism* modern.
+- **Smart Drag & Drop:** Seret dan lepas file dari komputer Anda langsung ke dalam browser. Mendukung upload banyak file (multi-file) sekaligus dengan tampilan preview sebelum diunggah.
+- **Fetch dari URL (Paste Link):** Punya gambar dari website lain? Cukup klik tombol *Paste* (ikon 📋) dan sistem akan mengunduhnya langsung ke server Anda tanpa perlu download manual ke komputer.
+- **Thumbnail Otomatis:** Preview otomatis untuk format gambar (JPEG, PNG, WebP, dll.) dan indikator ikon untuk format file lainnya.
+- **Manajemen Aset Lengkap:**
+  - 👁️ **Preview:** Lihat gambar atau video langsung di dalam *modal* tanpa berpindah halaman.
+  - 📋 **Copy Link:** Salin URL publik file dengan satu klik (dengan animasi umpan balik centang hijau).
+  - ✏️ **Rename:** Ganti nama file agar lebih rapi (nama file akan diubah di *database*).
+  - 📥 **Download:** Unduh file langsung ke perangkat Anda.
+  - 🗑️ **Hapus:** Hapus file secara permanen dari server beserta datanya di *database*.
+- **Keamanan Dasar:** Dilengkapi perlindungan PIN (default: `2098`) sebelum pengguna dapat mengakses halaman manajemen.
 
-### Persyaratan
-Pastikan Anda sudah menginstal [Git](https://git-scm.com/) di komputer Anda dan sudah melakukan login ke akun GitHub Anda melalui terminal.
+## Panduan Instalasi
 
-### Langkah-langkah Push ke GitHub
+1. **Upload File ke Server**
+   Unggah seluruh file di dalam repositori ini ke folder server Anda (misal: `public_html/wp-content/`). Pastikan server Anda mendukung PHP 7.4 atau lebih baru.
+   
+2. **Buat Folder Upload**
+   Buat sebuah folder bernama `uploads` di dalam direktori yang sama dengan `index.php`. Pastikan folder ini memiliki *permission* baca/tulis (`chmod 755` atau `777` jika diperlukan) agar PHP bisa menyimpan file.
+   
+3. **Konfigurasi Database**
+   - Buat database MySQL di server Anda.
+   - Import file `database.sql` ke dalam database tersebut untuk membuat tabel `assets`.
+   - Buka file `config.php` dan sesuaikan kredensial koneksinya:
+     ```php
+     $host = 'localhost';
+     $user = 'username_database';
+     $pass = 'password_database';
+     $db   = 'nama_database';
+     ```
+   - Di dalam `config.php`, jangan lupa untuk menyesuaikan `BASE_URL` dengan alamat website Anda.
 
-Buka terminal (Command Prompt, PowerShell, atau Git Bash) dan arahkan ke folder proyek Anda (`c:\laragon\www\wp-content`). Kemudian jalankan perintah-perintah berikut secara berurutan:
+## Cara Penggunaan
 
-**1. Inisialisasi Repositori Git (Jika Belum)**
-```bash
-git init
-```
-*(Perintah ini akan membuat folder `.git` tersembunyi untuk mulai melacak perubahan file).*
+1. Buka URL tempat Anda meletakkan folder ini (contoh: `https://domainanda.com/wp-content/`).
+2. Masukkan PIN akses (default adalah `2098`). Anda bisa mengubah PIN ini dengan mengedit variabel `$correct_pin` di dalam file `index.php`.
+3. Setelah masuk, Anda akan melihat indikator koneksi database di pojok kanan atas. Jika berwarna hijau, Anda siap menggunakan alat ini!
+4. **Upload File:** Seret file ke halaman atau klik kotak *Hero Banner*.
+5. **Paste URL:** Klik tombol *Paste URL* di dalam *Hero Banner* jika Anda sudah menyalin (*copy*) URL gambar dari website lain.
 
-**2. Tambahkan Semua File ke Staging Area**
-```bash
-git add .
-```
-*(Perintah ini akan menambahkan semua file dalam folder ke dalam daftar file yang siap di-commit).*
-
-**3. Buat Commit Pertama**
-```bash
-git commit -m "Initial commit: Asset Manager dengan UI/UX modern"
-```
-*(Menyimpan versi kode saat ini dengan pesan commit).*
-
-**4. Ubah Branch Utama ke 'main' (Standar GitHub Baru)**
-```bash
-git branch -M main
-```
-
-**5. Hubungkan dengan Repositori Remote GitHub Anda**
-```bash
-git remote add origin https://github.com/Barodillah/wp-content.git
-```
-*(Ini akan memberitahu Git lokal Anda ke mana kode harus dikirim. Jika Anda mendapatkan error remote 'origin' sudah ada, Anda bisa menghapusnya dulu dengan `git remote remove origin` lalu ulangi perintah di atas).*
-
-**6. Push (Unggah) Kode ke GitHub**
-```bash
-git push -u origin main
-```
-*(Perintah ini akan mengirimkan semua file ke repositori GitHub Anda. Bendera `-u` mengatur branch default untuk ke depannya).*
-
----
-
-### Update Kode di Masa Mendatang (Git Workflow)
-Jika suatu saat Anda melakukan perubahan pada file (misal mengedit `index.php`) dan ingin memperbarui repositori GitHub, Anda hanya perlu menjalankan 3 perintah dasar ini:
-
-```bash
-git add .
-git commit -m "Deskripsi perubahan yang Anda lakukan"
-git push
-```
-
-## Struktur File Penting
-- `index.php`: Antarmuka utama aplikasi (Frontend).
-- `api.php`: Backend untuk memproses permintaan API (list, delete, rename).
-- `upload.php`: Backend khusus untuk menangani proses upload file dan fetch URL.
-- `config.php`: Konfigurasi koneksi database dan konstanta dasar.
-- `database.sql`: Skema tabel database `assets`.
+## Teknologi yang Digunakan
+- **Backend:** PHP & MySQL (PDO)
+- **Frontend:** HTML5, Vanilla JavaScript, Vanilla CSS
+- **Ikon:** Lucide Icons (via CDN)
