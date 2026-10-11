@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Uploads content (preserve .htaccess)
+uploads/*
+!uploads/.htaccess
+
+# System & OS files
+.DS_Store
+Thumbs.db

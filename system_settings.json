@@ -1,0 +1,8 @@
+{
+    "main_domain": "https://bewhy.id",
+    "sub_path": "/wp-content",
+    "upload_folder": "uploads",
+    "local_proxy_target": "http://localhost",
+    "base_url": "https://bewhy.id/wp-content/uploads/",
+    "updated_at": "2026-10-11 05:57:25"
+}

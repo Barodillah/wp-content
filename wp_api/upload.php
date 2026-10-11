@@ -1,8 +1,37 @@
 <?php
+if (isset($_SERVER['HTTP_ORIGIN'])) {
+    header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
+    header('Access-Control-Allow-Credentials: true');
+    header('Access-Control-Max-Age: 86400');
+}
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD']))
+        header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']))
+        header("Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
+    exit(0);
+}
+
+session_start();
 header('Content-Type: application/json');
 error_reporting(0);
 ini_set('display_errors', 0);
 require_once 'config.php';
+
+// Cek autentikasi dan izin upload
+$currentUser = isset($_SESSION['user']) ? $_SESSION['user'] : null;
+$isSuperuser = $currentUser && $currentUser['role'] === 'superuser';
+$canUpload   = $isSuperuser || (!empty($currentUser['can_upload']));
+
+if (!$canUpload) {
+    http_response_code(403);
+    echo json_encode([
+        'success' => false,
+        'saved'   => [],
+        'errors'  => ['Akses ditolak: Anda tidak memiliki izin untuk mengunggah file.']
+    ]);
+    exit;
+}
 
 // Cek apakah koneksi DB berhasil
 if ($pdo === null) {
@@ -26,10 +55,49 @@ $response = [
     'errors'  => []
 ];
 
+$folderId = isset($_POST['folder_id']) && $_POST['folder_id'] !== '' ? (int)$_POST['folder_id'] : null;
+
 $stmt = $pdo->prepare(
-    "INSERT INTO assets (file_name, file_path, file_type, file_size, source_type) 
-     VALUES (:file_name, :file_path, :file_type, :file_size, :source_type)"
+    "INSERT INTO assets (folder_id, file_name, file_path, file_type, file_size, source_type) 
+     VALUES (:folder_id, :file_name, :file_path, :file_type, :file_size, :source_type)"
 );
+
+function mimeToExtension($mime) {
+    $mime = strtolower(trim(explode(';', $mime)[0]));
+    $map = [
+        'image/jpeg' => 'jpg',
+        'image/jpg' => 'jpg',
+        'image/png' => 'png',
+        'image/gif' => 'gif',
+        'image/webp' => 'webp',
+        'image/svg+xml' => 'svg',
+        'image/bmp' => 'bmp',
+        'image/x-icon' => 'ico',
+        'video/mp4' => 'mp4',
+        'video/webm' => 'webm',
+        'video/ogg' => 'ogv',
+        'video/quicktime' => 'mov',
+        'video/x-msvideo' => 'avi',
+        'application/pdf' => 'pdf',
+        'application/zip' => 'zip',
+        'application/x-zip-compressed' => 'zip',
+        'application/x-rar-compressed' => 'rar',
+        'application/msword' => 'doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+        'application/vnd.ms-excel' => 'xls',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+        'application/vnd.ms-powerpoint' => 'ppt',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation' => 'pptx',
+        'text/plain' => 'txt',
+        'text/csv' => 'csv',
+        'text/html' => 'html',
+        'application/json' => 'json',
+        'audio/mpeg' => 'mp3',
+        'audio/wav' => 'wav',
+        'audio/ogg' => 'ogg'
+    ];
+    return isset($map[$mime]) ? $map[$mime] : '';
+}
 
 // ==========================================
 // 1. HANDLER: MULTIPLE UPLOAD FILE
@@ -45,14 +113,22 @@ if (!empty($_FILES['files']['name'][0])) {
             $fileSize = $files['size'][$i];
             $mimeType = mime_content_type($files['tmp_name'][$i]);
 
+            if (empty($ext)) {
+                $ext = mimeToExtension($mimeType);
+                if (!empty($ext)) {
+                    $origName = rtrim($origName, '.') . '.' . $ext;
+                }
+            }
+
             // Buat nama unik agar tidak menimpa file lama
-            $uniqueName = uniqid('asset_', true) . '.' . $ext;
+            $uniqueName = uniqid('asset_', true) . ($ext ? '.' . $ext : '');
             $destination = UPLOAD_DIR . $uniqueName;
 
             if (move_uploaded_file($files['tmp_name'][$i], $destination)) {
                 $publicUrl = BASE_URL . $uniqueName;
 
                 $stmt->execute([
+                    ':folder_id'   => $folderId,
                     ':file_name'   => $origName,
                     ':file_path'   => $publicUrl,
                     ':file_type'   => $mimeType,
@@ -94,9 +170,20 @@ if (!empty($_POST['asset_url'])) {
         if ($httpCode === 200 && $fileData !== false) {
             $pathInfo = pathinfo(parse_url($rawUrl, PHP_URL_PATH));
             $origName = !empty($pathInfo['basename']) ? $pathInfo['basename'] : 'fetched_asset';
-            $ext = !empty($pathInfo['extension']) ? $pathInfo['extension'] : 'bin';
+            $ext = !empty($pathInfo['extension']) ? strtolower($pathInfo['extension']) : '';
 
-            $uniqueName = uniqid('url_', true) . '.' . $ext;
+            if (empty($ext) || $ext === 'bin') {
+                $inferredExt = mimeToExtension($contentType);
+                if (!empty($inferredExt)) {
+                    $ext = $inferredExt;
+                }
+            }
+
+            if (!empty($ext) && empty(pathinfo($origName, PATHINFO_EXTENSION))) {
+                $origName = rtrim($origName, '.') . '.' . $ext;
+            }
+
+            $uniqueName = uniqid('url_', true) . ($ext ? '.' . $ext : '');
             $destination = UPLOAD_DIR . $uniqueName;
 
             if (file_put_contents($destination, $fileData) !== false) {
@@ -104,6 +191,7 @@ if (!empty($_POST['asset_url'])) {
                 $publicUrl = BASE_URL . $uniqueName;
 
                 $stmt->execute([
+                    ':folder_id'   => $folderId,
                     ':file_name'   => $origName,
                     ':file_path'   => $publicUrl,
                     ':file_type'   => $contentType,

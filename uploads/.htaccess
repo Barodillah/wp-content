@@ -1,0 +1,7 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /wp-content/uploads/
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^(.*)$ ../wp_api/serve.php?file=$1 [QSA,L]
+</IfModule>
